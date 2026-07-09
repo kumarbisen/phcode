@@ -5,6 +5,7 @@ import { useThemeStore } from '../store/themeStore';
 import { useFileStore } from '../store/fileStore';
 import { useUIStore } from '../store/uiStore';
 import RNFS from 'react-native-fs';
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 
 export const WelcomeScreen = () => {
   const { theme } = useThemeStore();
@@ -89,6 +90,13 @@ export const WelcomeScreen = () => {
               </TouchableOpacity>
             )}
           </View>
+        </View>
+        <View style={{ marginTop: 60, alignItems: 'center' }}>
+          <BannerAd 
+            unitId={TestIds.BANNER} 
+            size={BannerAdSize.BANNER} 
+            requestOptions={{ requestNonPersonalizedAdsOnly: true }} 
+          />
         </View>
       </View>
     </ScrollView>

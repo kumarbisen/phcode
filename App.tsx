@@ -4,11 +4,18 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import MainLayout from './src/MainLayout';
 import RNFS from 'react-native-fs';
+import mobileAds from 'react-native-google-mobile-ads';
+import { loadInterstitialAd } from './src/utils/AdManager';
 
 const { LocalTerminalModule } = NativeModules;
 
 function App(): React.JSX.Element {
   useEffect(() => {
+    // Initialize Google AdMob SDK
+    mobileAds().initialize().then(() => {
+      loadInterstitialAd();
+    });
+
     const requestPermissions = async () => {
       if (Platform.OS === 'android') {
         if (Platform.Version >= 30) {

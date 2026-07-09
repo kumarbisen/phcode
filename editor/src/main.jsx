@@ -16,7 +16,7 @@ const App = () => {
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'SET_CONTENT') {
-          setCode(data.content);
+          setCode(data.content ?? '');
           setLanguage(data.language || 'javascript');
         } else if (data.type === 'SET_THEME') {
           setTheme(data.theme);
@@ -36,11 +36,14 @@ const App = () => {
   }, []);
 
   const handleEditorChange = (value) => {
+    // Monaco fires onChange with undefined when the editor is fully cleared.
+    // Coerce to empty string so React Native always receives a valid string.
+    const safeValue = value ?? '';
     // Send message back to React Native
     if (window.ReactNativeWebView) {
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'CONTENT_CHANGED',
-        content: value
+        content: safeValue
       }));
     }
   };

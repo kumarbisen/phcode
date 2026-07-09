@@ -243,7 +243,19 @@ export const TopBar = () => {
 
     if (command) {
       openTerminal();
-      LocalTerminalModule?.write(command);
+      try {
+        // Write the run script to the Alpine home directory (mapped to DocumentDirectoryPath/public)
+        const runScriptPath = `${RNFS.DocumentDirectoryPath}/public/.phcode_run.sh`;
+        const scriptContent = `#!/bin/sh\n${command}`;
+        await RNFS.writeFile(runScriptPath, scriptContent, 'utf8');
+        
+        // Execute the script cleanly in the terminal without echoing the huge script
+        // Adding \r simulates pressing enter
+        LocalTerminalModule?.write('sh ~/.phcode_run.sh\r');
+      } catch (error) {
+        console.error('Failed to create run script', error);
+        LocalTerminalModule?.write(`${command}\r`);
+      }
     } else {
       // For HTML/React/Vite, open the browser preview
       togglePreview();

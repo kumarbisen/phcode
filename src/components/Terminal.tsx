@@ -137,6 +137,8 @@ export const Terminal = () => {
         style={{ flex: 1, backgroundColor: '#1e1e1e' }}
         scrollEnabled={false}
         bounces={false}
+        androidLayerType="software"
+        overScrollMode="never"
       />
     </View>
   );

@@ -38,7 +38,8 @@ export const EditorArea = () => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === 'CONTENT_CHANGED' && activeFilePath) {
-        updateFileContent(activeFilePath, data.content);
+        // Guard against undefined (Monaco fires onChange with undefined on full clear)
+        updateFileContent(activeFilePath, data.content ?? '');
       } else if (data.type === 'REQUEST_FOCUS') {
         webViewRef.current?.requestFocus();
       }
@@ -109,6 +110,21 @@ export const EditorArea = () => {
             showsVerticalScrollIndicator={false}
             keyboardDisplayRequiresUserAction={false}
             hideKeyboardAccessoryView={true}
+            androidLayerType="software"
+            overScrollMode="never"
+            onLoadEnd={() => {
+              if (webViewRef.current && activeFile) {
+                webViewRef.current.postMessage(JSON.stringify({
+                  type: 'SET_CONTENT',
+                  content: activeFile.content,
+                  language: activeFile.language,
+                }));
+                webViewRef.current.postMessage(JSON.stringify({
+                  type: 'SET_THEME',
+                  theme: theme.id === 'dracula' ? 'vs-dark' : (theme.type === 'dark' ? 'vs-dark' : 'vs-light'),
+                }));
+              }
+            }}
           />
         ) : (
           <WelcomeScreen />

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { createMMKV } from 'react-native-mmkv';
 import RNFS from 'react-native-fs';
+import { showInterstitialAd } from '../utils/AdManager';
 
 const storage = createMMKV({ id: 'file-store' });
 
@@ -68,6 +69,9 @@ export const useFileStore = create<FileState>()(
       recentWorkspaces: [],
 
       loadDirectory: async (path: string) => {
+        // Show video ad when opening a folder
+        await showInterstitialAd();
+
         set({ isLoading: true });
         try {
           const items = await RNFS.readDir(path);
@@ -222,12 +226,14 @@ export const useFileStore = create<FileState>()(
 
   updateFileContent: (path: string, newContent: string) => {
     const { openFiles } = get();
+    // Guard against undefined/null from Monaco when editor is fully cleared
+    const safeContent = newContent ?? '';
     const newFiles = openFiles.map(f => {
       if (f.path === path) {
         return {
           ...f,
-          content: newContent,
-          isDirty: newContent !== f.originalContent
+          content: safeContent,
+          isDirty: safeContent !== f.originalContent
         };
       }
       return f;

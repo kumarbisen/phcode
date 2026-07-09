@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, NativeModules, Modal, TouchableWithoutFeedback } from 'react-native';
-import { Menu, Search, Play, Square, MoreVertical, Save, TerminalSquare } from 'lucide-react-native';
+import { Menu, Search, Play, Square, MoreVertical, Save, TerminalSquare, GitBranch } from 'lucide-react-native';
 import RNFS from 'react-native-fs';
 import { useThemeStore } from '../store/themeStore';
 import { useFileStore } from '../store/fileStore';
 import { useUIStore } from '../store/uiStore';
+import { useGitStore } from '../store/gitStore';
 
 const { LocalTerminalModule } = NativeModules;
 
@@ -216,8 +217,14 @@ const buildRunCommand = (filePath: string, language: string) => {
 export const TopBar = () => {
   const { theme } = useThemeStore();
   const { activeFilePath, openFiles, saveFile } = useFileStore();
-  const { isBottomPanelExpanded, toggleBottomPanel, setActiveBottomPanelTab, togglePreview } = useUIStore();
+  const { isBottomPanelExpanded, toggleBottomPanel, setActiveBottomPanelTab, togglePreview, isSidebarExpanded, toggleSidebar, setActiveSidebarTab } = useUIStore();
+  const { currentBranch, isGitRepo } = useGitStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const openSourceControl = () => {
+    setActiveSidebarTab('git');
+    if (!isSidebarExpanded) toggleSidebar();
+  };
 
   const openTerminal = () => {
     setActiveBottomPanelTab('terminal');
@@ -269,6 +276,16 @@ export const TopBar = () => {
         <Text style={[styles.projectName, { color: theme.colors.textPrimary }]}>
           PhCode
         </Text>
+        
+        {isGitRepo && (
+          <TouchableOpacity 
+             style={[styles.branchPill, { backgroundColor: theme.colors.sidebarBackground, borderColor: theme.colors.border }]}
+             onPress={openSourceControl}
+          >
+            <GitBranch color={theme.colors.textSecondary} size={14} />
+            <Text style={[styles.branchName, { color: theme.colors.textSecondary }]}>{currentBranch || '...'}</Text>
+          </TouchableOpacity>
+        )}
 
       </View>
 
@@ -353,9 +370,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
+  branchPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
   branchName: {
     fontSize: 12,
-    marginLeft: 8,
+    marginLeft: 6,
   },
   modalOverlay: {
     flex: 1,

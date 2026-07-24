@@ -43,6 +43,7 @@ interface AIState {
   cancelGeneration: () => void;
   clearMessages: () => void;
   deleteModel: () => Promise<void>;
+  errorMessage: string | null;
 }
 
 const MODEL_URLS = {
@@ -60,9 +61,10 @@ export const useAIStore = create<AIState>()(
       isGenerating: false,
       llamaContext: null,
       messages: [],
+      errorMessage: null,
 
       downloadModel: async (variant: '0.5B' | '1.5B') => {
-        set({ modelStatus: 'downloading', downloadProgress: 0, selectedVariant: variant });
+        set({ modelStatus: 'downloading', downloadProgress: 0, selectedVariant: variant, errorMessage: null });
         const url = MODEL_URLS[variant];
         const dir = `${RNFS.DocumentDirectoryPath}/models`;
         const path = `${dir}/qwen2.5-coder-${variant}.gguf`;
@@ -87,9 +89,9 @@ export const useAIStore = create<AIState>()(
           set({ modelStatus: 'ready', modelPath: path, downloadProgress: 1 });
           
           await get().loadModel();
-        } catch (e) {
+        } catch (e: any) {
           console.error("Failed to download model", e);
-          set({ modelStatus: 'error', modelPath: null });
+          set({ modelStatus: 'error', modelPath: null, errorMessage: `Download failed: ${e.message}` });
         }
       },
 
@@ -107,14 +109,13 @@ export const useAIStore = create<AIState>()(
           set({ modelStatus: 'loading' });
           const context = await initLlama({
             model: modelPath,
-            use_mlock: true,
             n_ctx: 4096, // Keep context manageable for mobile
             n_gpu_layers: 0 // CPU inference for compatibility first
           });
-          set({ llamaContext: context, modelStatus: 'ready' });
-        } catch (e) {
+          set({ llamaContext: context, modelStatus: 'ready', errorMessage: null });
+        } catch (e: any) {
           console.error("Failed to load model", e);
-          set({ modelStatus: 'error' });
+          set({ modelStatus: 'error', errorMessage: `Load failed: ${e.message}` });
         }
       },
 

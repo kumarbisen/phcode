@@ -25,6 +25,8 @@ export const WelcomeScreen = () => {
     openFolderPicker(RNFS.ExternalStorageDirectoryPath);
   };
 
+  const bannerAdUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-5258115024282608/7254212596';
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.content}>
@@ -34,7 +36,7 @@ export const WelcomeScreen = () => {
         <View style={styles.columns}>
           <View style={styles.column}>
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Start</Text>
-            
+
             <TouchableOpacity style={styles.actionButton} onPress={handleNewFile}>
               <FilePlus color={theme.colors.primary} size={20} />
               <Text style={[styles.actionText, { color: theme.colors.primary }]}>New File...</Text>
@@ -45,12 +47,12 @@ export const WelcomeScreen = () => {
               <Text style={[styles.actionText, { color: theme.colors.primary }]}>Open Folder...</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+            <TouchableOpacity style={styles.actionButton} onPress={() => { }}>
               <GitBranch color={theme.colors.primary} size={20} />
               <Text style={[styles.actionText, { color: theme.colors.primary }]}>Clone Git Repository...</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+            <TouchableOpacity style={styles.actionButton} onPress={() => { }}>
               <Monitor color={theme.colors.primary} size={20} />
               <Text style={[styles.actionText, { color: theme.colors.primary }]}>Connect to...</Text>
             </TouchableOpacity>
@@ -58,16 +60,16 @@ export const WelcomeScreen = () => {
 
           <View style={styles.column}>
             <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Recent</Text>
-            
+
             {recentWorkspaces && recentWorkspaces.length > 0 ? (
               recentWorkspaces.map((workspacePath, index) => {
                 const parts = workspacePath.split('/');
                 const name = parts[parts.length - 1];
                 const displayPath = workspacePath.replace(RNFS.ExternalStorageDirectoryPath, 'Storage');
-                
+
                 return (
-                  <TouchableOpacity 
-                    key={index} 
+                  <TouchableOpacity
+                    key={index}
                     style={styles.recentItem}
                     onPress={() => loadDirectory(workspacePath)}
                   >
@@ -83,7 +85,7 @@ export const WelcomeScreen = () => {
                 No recent workspaces.
               </Text>
             )}
-            
+
             {recentWorkspaces && recentWorkspaces.length > 0 && (
               <TouchableOpacity style={styles.moreButton}>
                 <Text style={[styles.recentName, { color: theme.colors.primary }]}>More...</Text>
@@ -92,10 +94,12 @@ export const WelcomeScreen = () => {
           </View>
         </View>
         <View style={{ marginTop: 60, alignItems: 'center' }}>
-          <BannerAd 
-            unitId={TestIds.BANNER} 
-            size={BannerAdSize.BANNER} 
-            requestOptions={{ requestNonPersonalizedAdsOnly: true }} 
+
+
+          <BannerAd
+            unitId={bannerAdUnitId}
+            size={BannerAdSize.BANNER}
+            requestOptions={{ requestNonPersonalizedAdsOnly: true }}
           />
         </View>
       </View>

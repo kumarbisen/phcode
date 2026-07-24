@@ -83,6 +83,14 @@ export const AIPanel = () => {
           Powered by Qwen 2.5 Coder. Runs 100% offline. No data leaves your device.
         </Text>
         
+        {modelStatus === 'error' && useAIStore.getState().errorMessage && (
+           <View style={{ backgroundColor: '#ff000020', padding: 12, borderRadius: 8, marginBottom: 20, width: '100%' }}>
+              <Text style={{ color: '#ff4444', fontSize: 12, textAlign: 'center' }}>
+                 {useAIStore.getState().errorMessage}
+              </Text>
+           </View>
+        )}
+
         <View style={{ width: '100%', marginBottom: 24 }}>
           <Text style={{ color: theme.colors.textSecondary, marginBottom: 8, fontSize: 12 }}>Choose a model:</Text>
           <TouchableOpacity 

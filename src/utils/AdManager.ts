@@ -4,9 +4,11 @@ let interstitial: InterstitialAd | null = null;
 let isAdLoaded = false;
 
 export const loadInterstitialAd = () => {
-  if (interstitial && isAdLoaded) return; // Already loaded
+  if (interstitial && isAdLoaded) return;
 
-  interstitial = InterstitialAd.createForAdRequest(TestIds.INTERSTITIAL, {
+  const adUnitId = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-5258115024282608/4715413239'
+
+  interstitial = InterstitialAd.createForAdRequest(adUnitId, {
     requestNonPersonalizedAdsOnly: true,
   });
 

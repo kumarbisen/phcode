@@ -96,13 +96,25 @@ export const Terminal = () => {
     LocalTerminalModule?.start();
 
     // Listen for shell output
-    const subscription = terminalEmitter.addListener('onTerminalData', (data: string) => {
-      if (webViewRef.current) {
-        const message = JSON.stringify({ type: 'TERM_OUTPUT', data });
+    let outputBuffer = '';
+    let flushTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const flushOutput = () => {
+      if (webViewRef.current && outputBuffer.length > 0) {
+        const message = JSON.stringify({ type: 'TERM_OUTPUT', data: outputBuffer });
         webViewRef.current.injectJavaScript(`
           window.postMessage(${JSON.stringify(message)}, '*');
           true;
         `);
+        outputBuffer = '';
+      }
+      flushTimeout = null;
+    };
+
+    const subscription = terminalEmitter.addListener('onTerminalData', (data: string) => {
+      outputBuffer += data;
+      if (!flushTimeout) {
+        flushTimeout = setTimeout(flushOutput, 16); // ~60fps batching
       }
     });
 
@@ -137,7 +149,6 @@ export const Terminal = () => {
         style={{ flex: 1, backgroundColor: '#1e1e1e' }}
         scrollEnabled={false}
         bounces={false}
-        androidLayerType="software"
         overScrollMode="never"
       />
     </View>

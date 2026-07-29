@@ -62,6 +62,8 @@ interface GitState {
   push: () => Promise<void>;
   clone: (url: string, destName: string) => Promise<void>;
   initRepo: () => Promise<void>;
+  initAndPublishRepo: (name: string, isPrivate: boolean) => Promise<void>;
+  publishRepo: (name: string, isPrivate: boolean) => Promise<void>;
   setCommitMessage: (msg: string) => void;
 }
 
@@ -169,9 +171,18 @@ export const useGitStore = create<GitState>()(
       
       commit: async () => {
          const rootPath = useFileStore.getState().rootPath;
-         const { commitMessage } = get();
+         const { commitMessage, stagedFiles, unstagedFiles } = get();
          if (!commitMessage.trim()) return;
-         await GitService.commit(rootPath, commitMessage);
+
+         if (stagedFiles.length === 0 && unstagedFiles.length > 0) {
+           await GitService.stageAll(rootPath);
+         }
+
+         const { githubUsername } = get();
+         const authorName = githubUsername || 'phcode-user';
+         const authorEmail = `${githubUsername || 'user'}@users.noreply.github.com`;
+
+         await GitService.commit(rootPath, commitMessage, authorName, authorEmail);
          set({ commitMessage: '' });
          // Polling isn't perfect for interactive commands, wait a bit
          setTimeout(() => get().refreshStatus(), 1000);
@@ -201,6 +212,58 @@ export const useGitStore = create<GitState>()(
          const rootPath = useFileStore.getState().rootPath;
          await GitService.init(rootPath);
          await get().refreshStatus();
+      },
+      
+      initAndPublishRepo: async (name: string, isPrivate: boolean) => {
+         const { githubToken, githubUsername } = get();
+         const rootPath = useFileStore.getState().rootPath;
+         if (!githubToken || !githubUsername || !rootPath) return;
+
+         set({ isLoading: true });
+
+         // 1. Initialize git
+         await GitService.init(rootPath);
+         
+         // 2. Stage all and commit
+         await GitService.stageAll(rootPath);
+         const authorName = githubUsername || 'phcode-user';
+         const authorEmail = `${githubUsername || 'user'}@users.noreply.github.com`;
+         await GitService.commit(rootPath, "Initial commit", authorName, authorEmail);
+
+         // 3. Create repo and push
+         const { createGithubRepo } = require('../services/githubAuth');
+         try {
+           const repoData = await createGithubRepo(githubToken, name, isPrivate);
+           if (repoData && repoData.clone_url) {
+             await GitService.setRemote(rootPath, repoData.clone_url);
+             await GitService.push(rootPath, githubToken, githubUsername, repoData.clone_url);
+           }
+         } catch (e: any) {
+           console.error(e);
+           set({ lastError: e.message });
+         }
+         
+         set({ isLoading: false });
+         await get().refreshStatus();
+      },
+      
+      publishRepo: async (name: string, isPrivate: boolean) => {
+         const { githubToken, githubUsername } = get();
+         const rootPath = useFileStore.getState().rootPath;
+         if (!githubToken || !githubUsername) return;
+         
+         const { createGithubRepo } = require('../services/githubAuth');
+         try {
+           const repoData = await createGithubRepo(githubToken, name, isPrivate);
+           if (repoData && repoData.clone_url) {
+             await GitService.setRemote(rootPath, repoData.clone_url);
+             await GitService.push(rootPath, githubToken, githubUsername, repoData.clone_url);
+             setTimeout(() => get().refreshStatus(), 1000);
+           }
+         } catch (e: any) {
+           console.error(e);
+           set({ lastError: e.message });
+         }
       },
       
       setCommitMessage: (msg: string) => set({ commitMessage: msg }),

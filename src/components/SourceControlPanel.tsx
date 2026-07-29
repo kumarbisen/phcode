@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal, ActivityIndicator, Image, Switch } from 'react-native';
 import { Check, Plus, Minus, RefreshCw, Upload, Download, GitBranch } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -27,6 +27,10 @@ export const SourceControlPanel = () => {
   const [usernameInput, setUsernameInput] = useState('');
   const [cloneUrl, setCloneUrl] = useState('');
   const [isCloneModalVisible, setCloneModalVisible] = useState(false);
+  const [isPublishModalVisible, setPublishModalVisible] = useState(false);
+  const [publishModalMode, setPublishModalMode] = useState<'init' | 'existing'>('existing');
+  const [publishRepoName, setPublishRepoName] = useState('');
+  const [publishIsPrivate, setPublishIsPrivate] = useState(true);
 
   useEffect(() => {
     gitStore.refreshStatus();
@@ -93,6 +97,55 @@ export const SourceControlPanel = () => {
     return <Text style={[styles.fileBadge, { color }]}>{status}</Text>;
   };
 
+  const renderPublishModal = () => (
+    <Modal transparent={true} visible={isPublishModalVisible} animationType="fade">
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, { backgroundColor: theme.colors.sidebarBackground, borderColor: theme.colors.border }]}>
+          <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>Publish to GitHub</Text>
+          
+          <Text style={{ color: theme.colors.textSecondary, marginBottom: 8 }}>Repository Name</Text>
+          <TextInput
+            style={[styles.input, { color: theme.colors.textPrimary, borderColor: theme.colors.border, marginBottom: 16 }]}
+            placeholder="my-awesome-repo"
+            placeholderTextColor={theme.colors.textSecondary}
+            value={publishRepoName}
+            onChangeText={setPublishRepoName}
+            autoCapitalize="none"
+          />
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+            <Text style={{ color: theme.colors.textPrimary }}>Private Repository</Text>
+            <Switch
+              value={publishIsPrivate}
+              onValueChange={setPublishIsPrivate}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+            />
+          </View>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+            <TouchableOpacity onPress={() => setPublishModalVisible(false)}>
+              <Text style={{ color: theme.colors.textSecondary, padding: 8 }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.button, { backgroundColor: theme.colors.primary, opacity: publishRepoName.trim() ? 1 : 0.5 }]} 
+              disabled={!publishRepoName.trim()}
+              onPress={async () => {
+                setPublishModalVisible(false);
+                if (publishModalMode === 'init') {
+                  await gitStore.initAndPublishRepo(publishRepoName.trim(), publishIsPrivate);
+                } else {
+                  await gitStore.publishRepo(publishRepoName.trim(), publishIsPrivate);
+                }
+              }}
+            >
+              <Text style={[styles.buttonText, { color: theme.colors.background }]}>Publish</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   if (!gitStore.githubToken) {
     return (
       <ScrollView style={styles.container}>
@@ -111,18 +164,27 @@ export const SourceControlPanel = () => {
           </TouchableOpacity>
         </View>
 
+        {uiStore.githubUser && (
+          <View style={[styles.profileContainer, { borderBottomColor: theme.colors.border }]}>
+            <Image source={{ uri: uiStore.githubUser.avatar_url }} style={styles.profileAvatar} />
+            <Text style={[styles.profileName, { color: theme.colors.textPrimary }]}>{uiStore.githubUser.name || uiStore.githubUser.login}</Text>
+          </View>
+        )}
+
         <View style={{ alignItems: 'center', marginTop: 40, padding: 20 }}>
           <GitBranch color={theme.colors.textSecondary} size={48} style={{ marginBottom: 16 }} />
           <Text style={{ color: theme.colors.textPrimary, fontSize: 14, marginBottom: 8, textAlign: 'center' }}>
             No Git repository found in {fileStore.currentProjectName}.
           </Text>
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.colors.primary, marginTop: 16 }]}
+            style={[styles.button, { backgroundColor: theme.colors.primary, marginTop: 16, width: '100%' }]}
             onPress={() => gitStore.initRepo()}
           >
             <Text style={[styles.buttonText, { color: theme.colors.background }]}>Initialize Repository</Text>
           </TouchableOpacity>
         </View>
+
+        {isPublishModalVisible && renderPublishModal()}
 
         {isCloneModalVisible && (
           <Modal transparent={true} visible={isCloneModalVisible} animationType="fade">
@@ -161,14 +223,27 @@ export const SourceControlPanel = () => {
           <TouchableOpacity onPress={() => gitStore.pull()} style={styles.actionIcon}>
             <Download color={theme.colors.textSecondary} size={16} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => gitStore.push()} style={styles.actionIcon}>
-            <Upload color={theme.colors.textSecondary} size={16} />
-          </TouchableOpacity>
+          {!gitStore.remoteUrl ? (
+            <TouchableOpacity onPress={() => { setPublishModalMode('existing'); setPublishModalVisible(true); }} style={styles.actionIcon}>
+              <Upload color={theme.colors.textSecondary} size={16} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => gitStore.push()} style={styles.actionIcon}>
+              <Upload color={theme.colors.textSecondary} size={16} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity onPress={() => gitStore.refreshStatus()} style={styles.actionIcon}>
             <RefreshCw color={theme.colors.textSecondary} size={16} />
           </TouchableOpacity>
         </View>
       </View>
+
+      {uiStore.githubUser && (
+        <View style={[styles.profileContainer, { borderBottomColor: theme.colors.border }]}>
+          <Image source={{ uri: uiStore.githubUser.avatar_url }} style={styles.profileAvatar} />
+          <Text style={[styles.profileName, { color: theme.colors.textPrimary }]}>{uiStore.githubUser.name || uiStore.githubUser.login}</Text>
+        </View>
+      )}
 
       <View style={{ marginBottom: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -179,22 +254,34 @@ export const SourceControlPanel = () => {
         </View>
       </View>
 
-      <View style={[styles.inputContainer, { borderColor: theme.colors.border }]}>
-        <TextInput
-          style={[styles.messageInput, { color: theme.colors.textPrimary }]}
-          placeholder="Message (Ctrl+Enter to commit)"
-          placeholderTextColor={theme.colors.textSecondary}
-          value={gitStore.commitMessage}
-          onChangeText={gitStore.setCommitMessage}
-          multiline
-        />
+      <View style={{ marginBottom: 16 }}>
+        <View style={[styles.inputContainer, { borderColor: theme.colors.border, marginBottom: 8 }]}>
+          <TextInput
+            style={[styles.messageInput, { color: theme.colors.textPrimary }]}
+            placeholder="Message (Ctrl+Enter to commit)"
+            placeholderTextColor={theme.colors.textSecondary}
+            value={gitStore.commitMessage}
+            onChangeText={gitStore.setCommitMessage}
+            multiline
+          />
+        </View>
+
         <TouchableOpacity
-          style={[styles.commitButton, { backgroundColor: gitStore.commitMessage.trim() ? theme.colors.primary : theme.colors.border }]}
+          style={[styles.button, { backgroundColor: theme.colors.primary, opacity: gitStore.commitMessage.trim() ? 1 : 0.5 }]}
           onPress={() => gitStore.commit()}
           disabled={!gitStore.commitMessage.trim()}
         >
-          <Check color={theme.colors.background} size={16} />
+          <Text style={[styles.buttonText, { color: theme.colors.background }]}>Commit</Text>
         </TouchableOpacity>
+
+        {!gitStore.remoteUrl && (
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: theme.colors.primary, marginTop: 8 }]}
+            onPress={() => { setPublishModalMode('existing'); setPublishModalVisible(true); }}
+          >
+            <Text style={[styles.buttonText, { color: theme.colors.background }]}>Publish to GitHub</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
@@ -266,6 +353,8 @@ export const SourceControlPanel = () => {
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       )}
+
+      {isPublishModalVisible && renderPublishModal()}
     </View>
   );
 };
@@ -277,14 +366,17 @@ const styles = StyleSheet.create({
   actionsRow: { flexDirection: 'row', gap: 12 },
   actionIcon: { padding: 4 },
 
+  profileContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 16, borderBottomWidth: 1, marginBottom: 12 },
+  profileAvatar: { width: 24, height: 24, borderRadius: 12, marginRight: 10 },
+  profileName: { fontSize: 13, fontWeight: '600' },
+
   authContainer: { padding: 4, marginTop: 16 },
   input: { borderWidth: 1, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13 },
   button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 10, borderRadius: 6 },
   buttonText: { fontWeight: '600', fontSize: 13 },
 
-  inputContainer: { borderWidth: 1, borderRadius: 4, overflow: 'hidden', marginBottom: 16 },
+  inputContainer: { borderWidth: 1, borderRadius: 4, overflow: 'hidden' },
   messageInput: { padding: 8, fontSize: 13, height: 60, textAlignVertical: 'top' },
-  commitButton: { padding: 8, alignItems: 'center', justifyContent: 'center' },
 
   changesContainer: { marginTop: 8 },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },

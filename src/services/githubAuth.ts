@@ -33,6 +33,7 @@ export const fetchGithubUser = async (accessToken: string) => {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'phcode-app',
       },
     });
 
@@ -43,6 +44,32 @@ export const fetchGithubUser = async (accessToken: string) => {
     return await response.json();
   } catch (error) {
     console.error('Error fetching GitHub user', error);
+    throw error;
+  }
+};
+export const createGithubRepo = async (accessToken: string, name: string, isPrivate: boolean) => {
+  try {
+    const response = await fetch('https://api.github.com/user/repos', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'phcode-app',
+      },
+      body: JSON.stringify({
+        name,
+        private: isPrivate,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to create repository');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error creating GitHub repo', error);
     throw error;
   }
 };

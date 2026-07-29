@@ -10,7 +10,7 @@ import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads'
 export const WelcomeScreen = () => {
   const { theme } = useThemeStore();
   const { recentWorkspaces, loadDirectory } = useFileStore();
-  const { setInputDialog, openFolderPicker } = useUIStore();
+  const { setInputDialog, openFolderPicker, setActiveSidebarTab } = useUIStore();
 
   const handleNewFile = () => {
     setInputDialog({
@@ -49,7 +49,7 @@ export const WelcomeScreen = () => {
               <Text style={[styles.actionText, { color: theme.colors.primary }]}>Open Folder...</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton} onPress={() => { }}>
+            <TouchableOpacity style={styles.actionButton} onPress={() => { setActiveSidebarTab('git') }}>
               <GitBranch color={theme.colors.primary} size={20} />
               <Text style={[styles.actionText, { color: theme.colors.primary }]}>Clone Git Repository...</Text>
             </TouchableOpacity>

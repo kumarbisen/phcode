@@ -71,6 +71,13 @@ ${command} > ~/.phcode_git_out.txt 2>&1
 
 // Helper for running a command that is meant to be visible to the user in the terminal
 const runVisibleCommand = async (command: string, label: string) => {
+   const statusFile = `${RNFS.DocumentDirectoryPath}/public/.phcode_run_status.txt`;
+   try {
+     if (await RNFS.exists(statusFile)) {
+       await RNFS.unlink(statusFile);
+     }
+   } catch(e) {}
+
    const runScriptPath = `${RNFS.DocumentDirectoryPath}/public/.phcode_run.sh`;
    const scriptContent = `#!/bin/sh
 if ! command -v git >/dev/null 2>&1; then
@@ -81,10 +88,23 @@ printf '\\033[36m%s\\033[0m\\n' ${shellQuote(label)}
 ${command}
 status=$?
 printf '\\n\\033[2mGit command finished with exit code %s\\033[0m\\n' "$status"
+echo "$status" > ~/.phcode_run_status.txt
 `;
     await RNFS.writeFile(runScriptPath, scriptContent, 'utf8');
     if (LocalTerminalModule) {
         LocalTerminalModule.write('sh ~/.phcode_run.sh\r');
+    }
+    
+    // Poll for the status file to know when it's done
+    let retries = 600; // 60 seconds max
+    while (retries > 0) {
+      await new Promise(resolve => setTimeout(() => resolve(undefined), 100));
+      try {
+        if (await RNFS.exists(statusFile)) {
+          break;
+        }
+      } catch(e) {}
+      retries--;
     }
 };
 
@@ -133,9 +153,13 @@ export const GitService = {
     await runCommandAndReadOutput(command);
   },
 
-  commit: async (repoPath: string, message: string): Promise<void> => {
+  commit: async (repoPath: string, message: string, authorName?: string, authorEmail?: string): Promise<void> => {
      const sandboxPath = toSandboxPath(repoPath);
-     const command = `git -C ${shellQuote(sandboxPath)} commit -m ${shellQuote(message)}`;
+     let authorArgs = '';
+     if (authorName && authorEmail) {
+       authorArgs = `-c user.name=${shellQuote(authorName)} -c user.email=${shellQuote(authorEmail)} `;
+     }
+     const command = `git -C ${shellQuote(sandboxPath)} ${authorArgs}commit -m ${shellQuote(message)}`;
      await runVisibleCommand(command, `Committing: ${message}`);
   },
 
@@ -213,6 +237,13 @@ export const GitService = {
 
   getRemote: async (repoPath: string): Promise<string> => {
     const sandboxPath = toSandboxPath(repoPath);
+    const remoteListCommand = `git -C ${shellQuote(sandboxPath)} remote`;
+    const remotes = await runCommandAndReadOutput(remoteListCommand);
+    
+    if (!remotes.split('\\n').map(r => r.trim()).includes('origin')) {
+      return '';
+    }
+
     const command = `git -C ${shellQuote(sandboxPath)} remote get-url origin`;
     return await runCommandAndReadOutput(command);
   },
@@ -220,6 +251,8 @@ export const GitService = {
   getLog: async (repoPath: string, n: number = 5): Promise<string> => {
     const sandboxPath = toSandboxPath(repoPath);
     const command = `git -C ${shellQuote(sandboxPath)} log --oneline -${n}`;
-    return await runCommandAndReadOutput(command);
+    const output = await runCommandAndReadOutput(command);
+    if (output.startsWith('fatal:')) return '';
+    return output;
   }
 };

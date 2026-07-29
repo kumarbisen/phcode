@@ -7,7 +7,6 @@ import { useUIStore } from '../store/uiStore';
 import { Explorer } from './Explorer';
 import { SearchPanel } from './SearchPanel';
 import { SourceControlPanel } from './SourceControlPanel';
-import { ExtensionsPanel } from './ExtensionsPanel';
 import { AIPanel } from './AIPanel';
 
 const COLLAPSED_WIDTH = 60;
@@ -27,7 +26,6 @@ export const Sidebar = () => {
     { id: 'explorer', icon: Files, label: 'Explorer' },
     { id: 'search', icon: Search, label: 'Search' },
     { id: 'git', icon: GitBranch, label: 'Source Control' },
-    { id: 'extensions', icon: Blocks, label: 'Extensions' },
     { id: 'ai', icon: Bot, label: 'AI Assistant' },
   ] as const;
 
@@ -75,7 +73,6 @@ export const Sidebar = () => {
         {isSidebarExpanded && activeSidebarTab === 'explorer' && <Explorer />}
         {isSidebarExpanded && activeSidebarTab === 'search' && <SearchPanel />}
         {isSidebarExpanded && activeSidebarTab === 'git' && <SourceControlPanel />}
-        {isSidebarExpanded && activeSidebarTab === 'extensions' && <ExtensionsPanel />}
         {isSidebarExpanded && activeSidebarTab === 'ai' && <AIPanel />}
         {isSidebarExpanded && activeSidebarTab === 'settings' && (
           <View>

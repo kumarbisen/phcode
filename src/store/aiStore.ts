@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { createMMKV } from 'react-native-mmkv';
 import RNFS from 'react-native-fs';
 import { initLlama, LlamaContext } from 'llama.rn';
+import { useFileStore } from './fileStore';
 
 const storage = createMMKV({ id: 'ai-store' });
 
@@ -35,11 +36,13 @@ interface AIState {
   isGenerating: boolean;
   llamaContext: LlamaContext | null;
   messages: Message[];
+  inputValue: string;
   
+  setInputValue: (val: string) => void;
   downloadModel: (variant: '0.5B' | '1.5B') => Promise<void>;
   loadModel: () => Promise<void>;
   releaseModel: () => Promise<void>;
-  sendMessage: (text: string, activeFileContent?: string, activeFileName?: string) => Promise<void>;
+  sendMessage: (text?: string, activeFileContent?: string, activeFileName?: string) => Promise<void>;
   cancelGeneration: () => void;
   clearMessages: () => void;
   deleteModel: () => Promise<void>;
@@ -61,7 +64,10 @@ export const useAIStore = create<AIState>()(
       isGenerating: false,
       llamaContext: null,
       messages: [],
+      inputValue: '',
       errorMessage: null,
+
+      setInputValue: (val) => set({ inputValue: val }),
 
       downloadModel: async (variant: '0.5B' | '1.5B') => {
         set({ modelStatus: 'downloading', downloadProgress: 0, selectedVariant: variant, errorMessage: null });
@@ -140,44 +146,73 @@ export const useAIStore = create<AIState>()(
          set({ modelStatus: 'none', modelPath: null, selectedVariant: null, llamaContext: null, downloadProgress: 0 });
       },
 
-      sendMessage: async (text: string, activeFileContent?: string, activeFileName?: string) => {
+      sendMessage: async (text?: string, activeFileContent?: string, activeFileName?: string) => {
         const { llamaContext, messages } = get();
         if (!llamaContext) {
              console.error("Model not loaded");
              return;
         }
 
-        const userMessageId = Math.random().toString(36).substring(7);
-        const assistantMessageId = Math.random().toString(36).substring(7);
+        let newMessages = [...messages];
+        let assistantMessageId = '';
 
-        const newMessages: Message[] = [
-          ...messages,
-          { id: userMessageId, role: 'user', content: text },
-          { id: assistantMessageId, role: 'assistant', content: '' }
-        ];
+        if (text) {
+          const userMessageId = Math.random().toString(36).substring(7);
+          assistantMessageId = Math.random().toString(36).substring(7);
+          newMessages = [
+            ...newMessages,
+            { id: userMessageId, role: 'user', content: text },
+            { id: assistantMessageId, role: 'assistant', content: '' }
+          ];
+        } else {
+           // Continuation of previous tool call
+           assistantMessageId = Math.random().toString(36).substring(7);
+           newMessages.push({ id: assistantMessageId, role: 'assistant', content: '' });
+        }
 
         set({ messages: newMessages, isGenerating: true });
 
-        let systemPrompt = "You are an expert coding assistant running locally on the user's device. You support 92 programming languages. Be concise and precise. When writing code, always use markdown code blocks with the language identifier.";
+        let systemPrompt = `You are an expert coding assistant running locally on the user's device. You support 92 programming languages. Be concise and precise. When writing code, always use markdown code blocks with the language identifier.
+
+You have access to the following tools to manage the user's workspace:
+1. read_file
+<tool_call>{"name": "read_file", "args": {"path": "src/App.tsx"}}</tool_call>
+2. write_file
+<tool_call>{"name": "write_file", "args": {"path": "src/App.tsx", "content": "..."}}</tool_call>
+
+If you want to use a tool, output ONLY the <tool_call> XML block and NOTHING else. Do not explain what you are doing before calling the tool. Wait for the <tool_result> response.`;
+        
         if (activeFileContent && activeFileName) {
-            // truncate activeFileContent to ~3000 words to avoid context overflow for now
-            const truncated = activeFileContent.split(/\s+/).slice(0, 3000).join(' ');
-            systemPrompt += `\n\nThe user has the following file open:\n--- FILE: ${activeFileName} ---\n${truncated}\n--- END FILE ---`;
+            // truncate activeFileContent to ~1000 words to save context
+            const truncated = activeFileContent.split(/\s+/).slice(0, 1000).join(' ');
+            systemPrompt += `\n\nThe user currently has this file open:\n--- FILE: ${activeFileName} ---\n${truncated}\n--- END FILE ---`;
         }
 
         let prompt = `<|im_start|>system\n${systemPrompt}<|im_end|>\n`;
         
-        for (let i = 0; i < messages.length; i++) {
-           const m = messages[i];
-           prompt += `<|im_start|>${m.role}\n${m.content}<|im_end|>\n`;
+        // Trim history to prevent crashing (max ~12000 chars for safety)
+        const MAX_PROMPT_LENGTH = 12000;
+        let historyStr = '';
+        
+        for (let i = Math.max(0, newMessages.length - 10); i < newMessages.length; i++) {
+           const m = newMessages[i];
+           if (m.content) {
+             historyStr += `<|im_start|>${m.role}\n${m.content}<|im_end|>\n`;
+           }
         }
         
-        prompt += `<|im_start|>user\n${text}<|im_end|>\n<|im_start|>assistant\n`;
+        if (historyStr.length > MAX_PROMPT_LENGTH) {
+           historyStr = historyStr.substring(historyStr.length - MAX_PROMPT_LENGTH);
+        }
+        
+        prompt += historyStr + `<|im_start|>assistant\n`;
 
+        let generatedContent = '';
         try {
           await llamaContext.completion(
-            { prompt, n_predict: 1024, stop: ['<|im_end|>', '<|endoftext|>'] },
+            { prompt, n_predict: 1024, stop: ['<|im_end|>', '<|endoftext|>', '</tool_call>'] },
             (res) => {
+              generatedContent += res.token;
               set((state) => {
                 const currentMessages = [...state.messages];
                 const lastIdx = currentMessages.length - 1;
@@ -191,6 +226,42 @@ export const useAIStore = create<AIState>()(
               });
             }
           );
+
+          // Agent Tool Execution Logic
+          if (generatedContent.includes('<tool_call>')) {
+             let toolJSON = generatedContent.split('<tool_call>')[1].trim();
+             // Since stop token is </tool_call>, it might not be in the output, but just in case
+             toolJSON = toolJSON.replace('</tool_call>', '').trim();
+             
+             let result = '';
+             try {
+                const call = JSON.parse(toolJSON);
+                if (call.name === 'read_file') {
+                   const content = await RNFS.readFile(useFileStore.getState().rootPath + '/' + call.args.path, 'utf8');
+                   result = `Read successful. Length: ${content.length} chars. Content snippet: ${content.substring(0, 1500)}`;
+                } else if (call.name === 'write_file') {
+                   await RNFS.writeFile(useFileStore.getState().rootPath + '/' + call.args.path, call.args.content, 'utf8');
+                   result = `Write successful.`;
+                } else {
+                   result = `Error: Tool ${call.name} not found.`;
+                }
+             } catch (err: any) {
+                result = `Error executing tool: ${err.message}`;
+             }
+
+             // Append tool result and resume
+             const toolMsgId = Math.random().toString(36).substring(7);
+             set((state) => ({
+                messages: [
+                  ...state.messages,
+                  { id: toolMsgId, role: 'user', content: `<tool_result>${result}</tool_result>` }
+                ]
+             }));
+             
+             // Recursively continue agent loop
+             await get().sendMessage();
+          }
+
         } catch (e) {
           console.error("Generation error", e);
         } finally {
@@ -216,6 +287,7 @@ export const useAIStore = create<AIState>()(
         modelPath: state.modelPath,
         selectedVariant: state.selectedVariant,
         messages: state.messages,
+        inputValue: state.inputValue,
       }),
     }
   )

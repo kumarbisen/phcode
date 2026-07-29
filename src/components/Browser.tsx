@@ -13,6 +13,10 @@ export const Browser = () => {
   const [isLoading, setIsLoading] = useState(false);
   const webViewRef = useRef<WebView>(null);
 
+  React.useEffect(() => {
+    setInputUrl(previewUrl);
+  }, [previewUrl]);
+
   const handleGo = () => {
     let finalUrl = inputUrl.trim();
     if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://') && !finalUrl.startsWith('file://')) {
@@ -73,6 +77,9 @@ export const Browser = () => {
         onLoadEnd={() => setIsLoading(false)}
         javaScriptEnabled={true}
         domStorageEnabled={true}
+        allowFileAccess={true}
+        allowFileAccessFromFileURLs={true}
+        allowUniversalAccessFromFileURLs={true}
       />
     </View>
   );

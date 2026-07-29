@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Platform } from 'react-native';
 import { Send, Bot, User, Trash2, StopCircle, Paperclip, DownloadCloud } from 'lucide-react-native';
 import { useThemeStore } from '../store/themeStore';
 import { useAIStore, Message } from '../store/aiStore';
@@ -9,12 +9,11 @@ import { FlashList, FlashListRef } from '@shopify/flash-list';
 export const AIPanel = () => {
   const { theme } = useThemeStore();
   const { 
-    modelStatus, downloadProgress, selectedVariant, messages, isGenerating, 
+    modelStatus, downloadProgress, selectedVariant, messages, isGenerating, inputValue, setInputValue,
     downloadModel, sendMessage, cancelGeneration, clearMessages, deleteModel, loadModel, releaseModel
   } = useAIStore();
   const { openFiles, activeFilePath } = useFileStore();
   
-  const [query, setQuery] = useState('');
   const [modelChoice, setModelChoice] = useState<'0.5B' | '1.5B'>('1.5B');
   const [includeContext, setIncludeContext] = useState(true);
   
@@ -36,7 +35,7 @@ export const AIPanel = () => {
   }, [messages, isGenerating]);
 
   const handleSend = () => {
-    if (!query.trim() || isGenerating) return;
+    if (!inputValue.trim() || isGenerating) return;
     
     let activeContent;
     let activeName;
@@ -49,8 +48,8 @@ export const AIPanel = () => {
       }
     }
     
-    sendMessage(query, activeContent, activeName);
-    setQuery('');
+    sendMessage(inputValue, activeContent, activeName);
+    setInputValue('');
   };
 
   const renderMessage = ({ item }: { item: Message }) => {
@@ -141,7 +140,7 @@ export const AIPanel = () => {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={styles.container}>
       <View style={styles.headerContainer}>
         <Text style={[styles.header, { color: theme.colors.textSecondary }]}>
           AI ASSISTANT • {selectedVariant}
@@ -170,6 +169,7 @@ export const AIPanel = () => {
             data={messages}
             renderItem={renderMessage}
             contentContainerStyle={{ paddingBottom: 20 }}
+            keyboardShouldPersistTaps="handled"
           />
         )}
       </View>
@@ -191,8 +191,8 @@ export const AIPanel = () => {
             style={[styles.input, { color: theme.colors.textPrimary }]} 
             placeholder="Ask AI..." 
             placeholderTextColor={theme.colors.textSecondary}
-            value={query}
-            onChangeText={setQuery}
+            value={inputValue}
+            onChangeText={setInputValue}
             multiline
             editable={!isGenerating}
           />
@@ -201,13 +201,13 @@ export const AIPanel = () => {
                 <StopCircle color={theme.colors.textPrimary} size={14} />
              </TouchableOpacity>
           ) : (
-             <TouchableOpacity style={[styles.sendButton, { backgroundColor: query.trim() ? theme.colors.primary : theme.colors.border }]} onPress={handleSend}>
-               <Send color={query.trim() ? theme.colors.background : theme.colors.textSecondary} size={14} />
+             <TouchableOpacity style={[styles.sendButton, { backgroundColor: inputValue.trim() ? theme.colors.primary : theme.colors.border }]} onPress={handleSend}>
+               <Send color={inputValue.trim() ? theme.colors.background : theme.colors.textSecondary} size={14} />
              </TouchableOpacity>
           )}
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 

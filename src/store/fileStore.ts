@@ -55,6 +55,7 @@ interface FileState {
   createNode: (parentPath: string, name: string, isDirectory: boolean) => Promise<void>;
   renameNode: (oldPath: string, newName: string) => Promise<void>;
   deleteNode: (path: string) => Promise<void>;
+  loadingFilePath: string | null;
 }
 
 export const useFileStore = create<FileState>()(
@@ -66,6 +67,7 @@ export const useFileStore = create<FileState>()(
       currentProjectName: 'Documents',
       openFiles: [],
       activeFilePath: null,
+      loadingFilePath: null,
       recentWorkspaces: [],
 
       loadDirectory: async (path: string) => {
@@ -165,6 +167,8 @@ export const useFileStore = create<FileState>()(
       return;
     }
 
+    set({ loadingFilePath: path });
+
     try {
       const content = await RNFS.readFile(path, 'utf8');
       const ext = path.split('.').pop()?.toLowerCase();
@@ -200,17 +204,11 @@ export const useFileStore = create<FileState>()(
       if (['kt', 'kts'].includes(ext!)) language = 'kotlin';
       if (ext === 'swift') language = 'swift';
       
-      const newFile: OpenFile = {
-        path,
-        content,
-        originalContent: content,
-        language,
-        isDirty: false
-      };
-      
-      set({ openFiles: [...openFiles, newFile], activeFilePath: path });
+      const newFile = { path, content, originalContent: content, language, isDirty: false };
+      set({ openFiles: [...get().openFiles, newFile], activeFilePath: path, loadingFilePath: null });
     } catch (e) {
       console.error('Failed to open file', e);
+      set({ loadingFilePath: null });
     }
   },
 

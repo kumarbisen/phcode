@@ -1,14 +1,16 @@
 import React, { useRef, useEffect } from 'react';
-import { View, StyleSheet, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { X, Circle } from 'lucide-react-native';
 import { useThemeStore } from '../store/themeStore';
 import { useFileStore } from '../store/fileStore';
+import { useUIStore } from '../store/uiStore';
 import { WelcomeScreen } from './WelcomeScreen';
 
 export const EditorArea = () => {
   const { theme } = useThemeStore();
-  const { openFiles, activeFilePath, updateFileContent, openFile, closeFile } = useFileStore();
+  const { openFiles, activeFilePath, updateFileContent, openFile, closeFile, loadingFilePath } = useFileStore();
+  const { setSidebarExpanded } = useUIStore();
   const webViewRef = useRef<WebView>(null);
   
   const activeFile = openFiles.find(f => f.path === activeFilePath);
@@ -42,6 +44,7 @@ export const EditorArea = () => {
         updateFileContent(activeFilePath, data.content ?? '');
       } else if (data.type === 'REQUEST_FOCUS') {
         webViewRef.current?.requestFocus();
+        setSidebarExpanded(false);
       }
     } catch (e) {
       console.error(e);
@@ -59,7 +62,10 @@ export const EditorArea = () => {
                 <TouchableOpacity
                   key={file.path}
                   style={[styles.tab, { backgroundColor: isActive ? theme.colors.activeTabBackground : 'transparent' }]}
-                  onPress={() => openFile(file.path)}
+                  onPress={() => {
+                    openFile(file.path);
+                    setSidebarExpanded(false);
+                  }}
                 >
                   <Text style={[styles.tabText, { color: isActive ? theme.colors.textPrimary : theme.colors.textSecondary }]}>
                     {file.path.split('/').pop()}
@@ -75,14 +81,19 @@ export const EditorArea = () => {
               );
             })
           ) : (
-            <View style={styles.tab}>
+            <TouchableOpacity style={styles.tab} onPress={() => setSidebarExpanded(false)}>
               <Text style={{ color: theme.colors.textSecondary }}>Welcome</Text>
-            </View>
+            </TouchableOpacity>
           )}
         </ScrollView>
       </View>
       <View style={styles.editorContainer}>
-        {activeFilePath ? (
+        {loadingFilePath ? (
+          <View style={styles.emptyState}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>Loading...</Text>
+          </View>
+        ) : activeFilePath ? (
           <WebView
             ref={webViewRef}
             source={{ uri: 'file:///android_asset/editor/index.html' }}

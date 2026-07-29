@@ -6,7 +6,7 @@ import Editor, { loader } from '@monaco-editor/react';
 loader.config({ paths: { vs: 'monaco-editor/vs' } });
 
 const App = () => {
-  const [code, setCode] = useState('// Welcome to PhCode');
+  const [code, setCode] = useState('');
   const [language, setLanguage] = useState('javascript');
   const [theme, setTheme] = useState('vs-dark');
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, NativeModules, Modal, TouchableWithoutFeedback } from 'react-native';
-import { Menu, Search, Play, Square, MoreVertical, Save, TerminalSquare, GitBranch } from 'lucide-react-native';
+import { Menu, Search, Play, Square, MoreVertical, Save, TerminalSquare, GitBranch, Globe } from 'lucide-react-native';
 import RNFS from 'react-native-fs';
 import { useThemeStore } from '../store/themeStore';
 import { useFileStore } from '../store/fileStore';
@@ -217,7 +217,7 @@ const buildRunCommand = (filePath: string, language: string) => {
 export const TopBar = () => {
   const { theme } = useThemeStore();
   const { activeFilePath, openFiles, saveFile } = useFileStore();
-  const { isBottomPanelExpanded, toggleBottomPanel, setActiveBottomPanelTab, togglePreview, isSidebarExpanded, toggleSidebar, setActiveSidebarTab } = useUIStore();
+  const { isBottomPanelExpanded, toggleBottomPanel, setActiveBottomPanelTab, togglePreview, isSidebarExpanded, toggleSidebar, setActiveSidebarTab, setPreviewUrl } = useUIStore();
   const { currentBranch, isGitRepo } = useGitStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -234,6 +234,30 @@ export const TopBar = () => {
   const handleStop = () => {
     // Send Ctrl+C (\x03) to kill the running process
     LocalTerminalModule?.write('\x03');
+  };
+
+  const handleGoLive = async () => {
+    if (activeFilePath) {
+      if (activeFilePath.endsWith('.html') || activeFilePath.endsWith('.htm')) {
+        setPreviewUrl('file://' + activeFilePath);
+      } else {
+        const dir = activeFilePath.substring(0, activeFilePath.lastIndexOf('/'));
+        const indexHtmlPath = dir + '/index.html';
+        try {
+          const exists = await RNFS.exists(indexHtmlPath);
+          if (exists) {
+            setPreviewUrl('file://' + indexHtmlPath);
+          } else {
+            // fallback to just setting the directory or file
+            setPreviewUrl('file://' + activeFilePath);
+          }
+        } catch (e) {
+          setPreviewUrl('file://' + activeFilePath);
+        }
+      }
+    }
+    togglePreview();
+    setIsMenuOpen(false);
   };
 
   const handlePlay = async () => {
@@ -322,6 +346,14 @@ export const TopBar = () => {
                       >
                         <Play color={theme.colors.success} size={18} fill={theme.colors.success} style={styles.dropdownIcon} />
                         <Text style={[styles.dropdownText, { color: theme.colors.textPrimary }]}>Run / Play</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.dropdownItem, { borderBottomColor: theme.colors.border }]}
+                        onPress={handleGoLive}
+                      >
+                        <Globe color={theme.colors.primary} size={18} style={styles.dropdownIcon} />
+                        <Text style={[styles.dropdownText, { color: theme.colors.textPrimary }]}>Go Live</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity

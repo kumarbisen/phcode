@@ -29,8 +29,10 @@ export const WelcomeScreen = () => {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+
       <View style={styles.content}>
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>PhCode</Text>
+        <Text style={[{ color: theme.colors.textPrimary }]}>Made with ❤️ by vivek bisen</Text>
         <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>Editing evolved</Text>
 
         <View style={styles.columns}>

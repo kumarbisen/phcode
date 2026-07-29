@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { EditorArea } from './components/EditorArea';
 import { BottomPanel } from './components/BottomPanel';
 import { Browser } from './components/Browser';
+import { GlobalModals } from './components/GlobalModals';
 import { useThemeStore } from './store/themeStore';
 import { useUIStore } from './store/uiStore';
 
@@ -31,6 +32,7 @@ const MainLayout = () => {
           </View>
         </View>
       </View>
+      <GlobalModals />
     </SafeAreaView>
   );
 };

@@ -13,13 +13,16 @@ const Github = ({ color, size, style }: { color: string, size: number, style?: a
 import { useThemeStore } from '../store/themeStore';
 import { useGitStore } from '../store/gitStore';
 import { useFileStore } from '../store/fileStore';
+import { useUIStore } from '../store/uiStore';
+import { loginWithGithub, fetchGithubUser } from '../services/githubAuth';
 import RNFS from 'react-native-fs';
 
 export const SourceControlPanel = () => {
   const { theme } = useThemeStore();
   const gitStore = useGitStore();
   const fileStore = useFileStore();
-  
+  const uiStore = useUIStore();
+
   const [tokenInput, setTokenInput] = useState('');
   const [usernameInput, setUsernameInput] = useState('');
   const [cloneUrl, setCloneUrl] = useState('');
@@ -32,6 +35,20 @@ export const SourceControlPanel = () => {
   const handleConnect = () => {
     if (tokenInput.trim() && usernameInput.trim()) {
       gitStore.setGithubToken(tokenInput.trim(), usernameInput.trim());
+    }
+  };
+
+  const handleOAuthLogin = async () => {
+    try {
+      const result = await loginWithGithub();
+      if (result.accessToken) {
+        uiStore.setGithubToken(result.accessToken);
+        const user = await fetchGithubUser(result.accessToken);
+        uiStore.setGithubUser(user);
+        gitStore.setGithubToken(result.accessToken, user.login);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -49,29 +66,17 @@ export const SourceControlPanel = () => {
   const renderAuthSection = () => (
     <View style={styles.authContainer}>
       <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary, marginBottom: 12 }]}>GITHUB AUTH</Text>
-      <TextInput
-        style={[styles.input, { color: theme.colors.textPrimary, borderColor: theme.colors.border, marginBottom: 8 }]}
-        placeholder="GitHub Username"
-        placeholderTextColor={theme.colors.textSecondary}
-        value={usernameInput}
-        onChangeText={setUsernameInput}
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={[styles.input, { color: theme.colors.textPrimary, borderColor: theme.colors.border, marginBottom: 12 }]}
-        placeholder="Personal Access Token (PAT)"
-        placeholderTextColor={theme.colors.textSecondary}
-        value={tokenInput}
-        onChangeText={setTokenInput}
-        secureTextEntry
-      />
-      <TouchableOpacity 
-        style={[styles.button, { backgroundColor: theme.colors.primary }]}
-        onPress={handleConnect}
+
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: theme.colors.primary, marginBottom: 16 }]}
+        onPress={handleOAuthLogin}
       >
         <Github color={theme.colors.background} size={16} style={{ marginRight: 8 }} />
-        <Text style={[styles.buttonText, { color: theme.colors.background }]}>Connect GitHub</Text>
+        <Text style={[styles.buttonText, { color: theme.colors.background }]}>Sign in with GitHub</Text>
       </TouchableOpacity>
+
+
+
       <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 8 }}>
         Token needs 'repo' scope to push/pull private repositories.
       </Text>
@@ -99,51 +104,51 @@ export const SourceControlPanel = () => {
   if (!gitStore.isGitRepo) {
     return (
       <View style={styles.container}>
-         <View style={styles.headerRow}>
-           <Text style={[styles.header, { color: theme.colors.textSecondary }]}>SOURCE CONTROL</Text>
-           <TouchableOpacity onPress={() => setCloneModalVisible(true)}>
-             <Download color={theme.colors.textSecondary} size={18} />
-           </TouchableOpacity>
-         </View>
-         
-         <View style={{ alignItems: 'center', marginTop: 40, padding: 20 }}>
-            <GitBranch color={theme.colors.textSecondary} size={48} style={{ marginBottom: 16 }} />
-            <Text style={{ color: theme.colors.textPrimary, fontSize: 14, marginBottom: 8, textAlign: 'center' }}>
-              No Git repository found in {fileStore.currentProjectName}.
-            </Text>
-            <TouchableOpacity 
-              style={[styles.button, { backgroundColor: theme.colors.primary, marginTop: 16 }]}
-              onPress={() => gitStore.initRepo()}
-            >
-              <Text style={[styles.buttonText, { color: theme.colors.background }]}>Initialize Repository</Text>
-            </TouchableOpacity>
-         </View>
+        <View style={styles.headerRow}>
+          <Text style={[styles.header, { color: theme.colors.textSecondary }]}>SOURCE CONTROL</Text>
+          <TouchableOpacity onPress={() => setCloneModalVisible(true)}>
+            <Download color={theme.colors.textSecondary} size={16} />
+          </TouchableOpacity>
+        </View>
 
-         {isCloneModalVisible && (
-            <Modal transparent={true} visible={isCloneModalVisible} animationType="fade">
-               <View style={styles.modalOverlay}>
-                  <View style={[styles.modalContent, { backgroundColor: theme.colors.sidebarBackground, borderColor: theme.colors.border }]}>
-                     <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>Clone Repository</Text>
-                     <TextInput
-                        style={[styles.input, { color: theme.colors.textPrimary, borderColor: theme.colors.border, marginBottom: 16 }]}
-                        placeholder="https://github.com/user/repo.git"
-                        placeholderTextColor={theme.colors.textSecondary}
-                        value={cloneUrl}
-                        onChangeText={setCloneUrl}
-                        autoCapitalize="none"
-                     />
-                     <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
-                        <TouchableOpacity onPress={() => setCloneModalVisible(false)}>
-                           <Text style={{ color: theme.colors.textSecondary, padding: 8 }}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.primary }]} onPress={handleClone}>
-                           <Text style={[styles.buttonText, { color: theme.colors.background }]}>Clone</Text>
-                        </TouchableOpacity>
-                     </View>
-                  </View>
-               </View>
-            </Modal>
-         )}
+        <View style={{ alignItems: 'center', marginTop: 40, padding: 20 }}>
+          <GitBranch color={theme.colors.textSecondary} size={48} style={{ marginBottom: 16 }} />
+          <Text style={{ color: theme.colors.textPrimary, fontSize: 14, marginBottom: 8, textAlign: 'center' }}>
+            No Git repository found in {fileStore.currentProjectName}.
+          </Text>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: theme.colors.primary, marginTop: 16 }]}
+            onPress={() => gitStore.initRepo()}
+          >
+            <Text style={[styles.buttonText, { color: theme.colors.background }]}>Initialize Repository</Text>
+          </TouchableOpacity>
+        </View>
+
+        {isCloneModalVisible && (
+          <Modal transparent={true} visible={isCloneModalVisible} animationType="fade">
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { backgroundColor: theme.colors.sidebarBackground, borderColor: theme.colors.border }]}>
+                <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>Clone Repository</Text>
+                <TextInput
+                  style={[styles.input, { color: theme.colors.textPrimary, borderColor: theme.colors.border, marginBottom: 16 }]}
+                  placeholder="https://github.com/user/repo.git"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={cloneUrl}
+                  onChangeText={setCloneUrl}
+                  autoCapitalize="none"
+                />
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+                  <TouchableOpacity onPress={() => setCloneModalVisible(false)}>
+                    <Text style={{ color: theme.colors.textSecondary, padding: 8 }}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.primary }]} onPress={handleClone}>
+                    <Text style={[styles.buttonText, { color: theme.colors.background }]}>Clone</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        )}
       </View>
     );
   }
@@ -164,102 +169,102 @@ export const SourceControlPanel = () => {
           </TouchableOpacity>
         </View>
       </View>
-      
+
       <View style={{ marginBottom: 12 }}>
-         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <GitBranch color={theme.colors.textSecondary} size={14} style={{ marginRight: 6 }} />
-            <Text style={{ color: theme.colors.textPrimary, fontSize: 13, fontWeight: '500' }}>
-               {gitStore.currentBranch}
-            </Text>
-         </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <GitBranch color={theme.colors.textSecondary} size={14} style={{ marginRight: 6 }} />
+          <Text style={{ color: theme.colors.textPrimary, fontSize: 13, fontWeight: '500' }}>
+            {gitStore.currentBranch}
+          </Text>
+        </View>
       </View>
 
       <View style={[styles.inputContainer, { borderColor: theme.colors.border }]}>
-        <TextInput 
-          style={[styles.messageInput, { color: theme.colors.textPrimary }]} 
-          placeholder="Message (Ctrl+Enter to commit)" 
+        <TextInput
+          style={[styles.messageInput, { color: theme.colors.textPrimary }]}
+          placeholder="Message (Ctrl+Enter to commit)"
           placeholderTextColor={theme.colors.textSecondary}
           value={gitStore.commitMessage}
           onChangeText={gitStore.setCommitMessage}
           multiline
         />
-        <TouchableOpacity 
-           style={[styles.commitButton, { backgroundColor: gitStore.commitMessage.trim() ? theme.colors.primary : theme.colors.border }]}
-           onPress={() => gitStore.commit()}
-           disabled={!gitStore.commitMessage.trim()}
+        <TouchableOpacity
+          style={[styles.commitButton, { backgroundColor: gitStore.commitMessage.trim() ? theme.colors.primary : theme.colors.border }]}
+          onPress={() => gitStore.commit()}
+          disabled={!gitStore.commitMessage.trim()}
         >
           <Check color={theme.colors.background} size={16} />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-         
+
         {gitStore.stagedFiles.length > 0 && (
           <View style={styles.changesContainer}>
             <View style={styles.sectionHeaderRow}>
-               <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>STAGED CHANGES ({gitStore.stagedFiles.length})</Text>
+              <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>STAGED CHANGES ({gitStore.stagedFiles.length})</Text>
             </View>
             {gitStore.stagedFiles.map((file, i) => (
-               <View key={i} style={styles.fileRow}>
-                  {renderFileBadge(file.status)}
-                  <Text style={[styles.fileName, { color: theme.colors.textPrimary }]} numberOfLines={1} ellipsizeMode="middle">
-                     {file.path}
-                  </Text>
-                  <TouchableOpacity onPress={() => gitStore.unstageFile(file.path)}>
-                     <Minus color={theme.colors.textSecondary} size={16} />
-                  </TouchableOpacity>
-               </View>
+              <View key={i} style={styles.fileRow}>
+                {renderFileBadge(file.status)}
+                <Text style={[styles.fileName, { color: theme.colors.textPrimary }]} numberOfLines={1} ellipsizeMode="middle">
+                  {file.path}
+                </Text>
+                <TouchableOpacity onPress={() => gitStore.unstageFile(file.path)}>
+                  <Minus color={theme.colors.textSecondary} size={16} />
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
         )}
 
         <View style={styles.changesContainer}>
           <View style={styles.sectionHeaderRow}>
-             <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>CHANGES ({gitStore.unstagedFiles.length})</Text>
-             {gitStore.unstagedFiles.length > 0 && (
-                <TouchableOpacity onPress={() => gitStore.stageAll()}>
-                   <Plus color={theme.colors.textSecondary} size={16} />
-                </TouchableOpacity>
-             )}
+            <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>CHANGES ({gitStore.unstagedFiles.length})</Text>
+            {gitStore.unstagedFiles.length > 0 && (
+              <TouchableOpacity onPress={() => gitStore.stageAll()}>
+                <Plus color={theme.colors.textSecondary} size={16} />
+              </TouchableOpacity>
+            )}
           </View>
-          
+
           {gitStore.unstagedFiles.length === 0 && gitStore.stagedFiles.length === 0 ? (
             <Text style={{ color: theme.colors.textSecondary, textAlign: 'center', marginTop: 10, fontSize: 12 }}>
               No pending changes.
             </Text>
           ) : (
-             gitStore.unstagedFiles.map((file, i) => (
-                <View key={i} style={styles.fileRow}>
-                   {renderFileBadge(file.status)}
-                   <Text style={[styles.fileName, { color: theme.colors.textPrimary }]} numberOfLines={1} ellipsizeMode="middle">
-                      {file.path}
-                   </Text>
-                   <TouchableOpacity onPress={() => gitStore.stageFile(file.path)}>
-                      <Plus color={theme.colors.textSecondary} size={16} />
-                   </TouchableOpacity>
-                </View>
-             ))
+            gitStore.unstagedFiles.map((file, i) => (
+              <View key={i} style={styles.fileRow}>
+                {renderFileBadge(file.status)}
+                <Text style={[styles.fileName, { color: theme.colors.textPrimary }]} numberOfLines={1} ellipsizeMode="middle">
+                  {file.path}
+                </Text>
+                <TouchableOpacity onPress={() => gitStore.stageFile(file.path)}>
+                  <Plus color={theme.colors.textSecondary} size={16} />
+                </TouchableOpacity>
+              </View>
+            ))
           )}
         </View>
 
         {gitStore.recentCommits.length > 0 && (
-           <View style={[styles.changesContainer, { marginTop: 24, paddingBottom: 24 }]}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary, marginBottom: 8 }]}>RECENT COMMITS</Text>
-              {gitStore.recentCommits.map((commit, i) => (
-                 <View key={i} style={styles.commitRow}>
-                    <Text style={[styles.commitHash, { color: theme.colors.textSecondary }]}>{commit.hash}</Text>
-                    <Text style={[styles.commitMsg, { color: theme.colors.textPrimary }]} numberOfLines={1}>{commit.message}</Text>
-                 </View>
-              ))}
-           </View>
+          <View style={[styles.changesContainer, { marginTop: 24, paddingBottom: 24 }]}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary, marginBottom: 8 }]}>RECENT COMMITS</Text>
+            {gitStore.recentCommits.map((commit, i) => (
+              <View key={i} style={styles.commitRow}>
+                <Text style={[styles.commitHash, { color: theme.colors.textSecondary }]}>{commit.hash}</Text>
+                <Text style={[styles.commitMsg, { color: theme.colors.textPrimary }]} numberOfLines={1}>{commit.message}</Text>
+              </View>
+            ))}
+          </View>
         )}
 
       </ScrollView>
-      
+
       {gitStore.isLoading && (
-         <View style={[StyleSheet.absoluteFill, styles.loadingOverlay, { backgroundColor: 'rgba(0,0,0,0.3)' }]}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
-         </View>
+        <View style={[StyleSheet.absoluteFill, styles.loadingOverlay, { backgroundColor: 'rgba(0,0,0,0.3)' }]}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
       )}
     </View>
   );
@@ -271,31 +276,31 @@ const styles = StyleSheet.create({
   header: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
   actionsRow: { flexDirection: 'row', gap: 12 },
   actionIcon: { padding: 4 },
-  
+
   authContainer: { padding: 4, marginTop: 16 },
   input: { borderWidth: 1, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13 },
   button: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 10, borderRadius: 6 },
   buttonText: { fontWeight: '600', fontSize: 13 },
-  
+
   inputContainer: { borderWidth: 1, borderRadius: 4, overflow: 'hidden', marginBottom: 16 },
   messageInput: { padding: 8, fontSize: 13, height: 60, textAlignVertical: 'top' },
   commitButton: { padding: 8, alignItems: 'center', justifyContent: 'center' },
-  
+
   changesContainer: { marginTop: 8 },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   sectionTitle: { fontSize: 11, fontWeight: '600' },
-  
+
   fileRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   fileBadge: { fontSize: 12, fontWeight: '600', width: 20, textAlign: 'center', marginRight: 6 },
   fileName: { flex: 1, fontSize: 13 },
-  
+
   commitRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
   commitHash: { fontSize: 12, fontFamily: 'monospace', width: 60, marginRight: 8 },
   commitMsg: { flex: 1, fontSize: 13 },
-  
+
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { width: '85%', maxWidth: 400, borderWidth: 1, borderRadius: 8, padding: 20 },
   modalTitle: { fontSize: 16, fontWeight: '600', marginBottom: 16 },
-  
+
   loadingOverlay: { justifyContent: 'center', alignItems: 'center', zIndex: 100 }
 });

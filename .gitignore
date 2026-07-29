@@ -4,6 +4,8 @@
 
 # Xcode
 #
+*.keystore
+*.jks
 build/
 *.pbxuser
 !default.pbxuser

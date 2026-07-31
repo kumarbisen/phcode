@@ -4,7 +4,9 @@ import { Alert } from 'react-native';
 
 interface UIState {
   isSidebarExpanded: boolean;
+  isSidebarVisible: boolean;
   toggleSidebar: () => void;
+  toggleSidebarVisible: () => void;
   setSidebarExpanded: (expanded: boolean) => void;
   activeSidebarTab: 'explorer' | 'search' | 'git' | 'extensions' | 'settings' | 'ai';
   setActiveSidebarTab: (tab: 'explorer' | 'search' | 'git' | 'extensions' | 'settings' | 'ai') => void;
@@ -29,7 +31,9 @@ interface UIState {
 
 export const useUIStore = create<UIState>((set) => ({
   isSidebarExpanded: true,
+  isSidebarVisible: true,
   toggleSidebar: () => set((state) => ({ isSidebarExpanded: !state.isSidebarExpanded })),
+  toggleSidebarVisible: () => set((state) => ({ isSidebarVisible: !state.isSidebarVisible })),
   setSidebarExpanded: (expanded) => set({ isSidebarExpanded: expanded }),
   activeSidebarTab: 'explorer',
   setActiveSidebarTab: (tab) => set({ activeSidebarTab: tab }),

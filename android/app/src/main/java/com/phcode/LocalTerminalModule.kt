@@ -62,10 +62,48 @@ class LocalTerminalModule(reactContext: ReactApplicationContext) : ReactContextB
         }
     }
 
+    private fun extractLibraryFromApk(libraryName: String, destFile: File): Boolean {
+        val appInfo = reactApplicationContext.applicationInfo
+        val apkPaths = mutableListOf<String>()
+        apkPaths.add(appInfo.sourceDir)
+        appInfo.splitSourceDirs?.let {
+            apkPaths.addAll(it)
+        }
+
+        val architecture = resolveArchitecture().abi
+        val zipEntryPath = "lib/$architecture/$libraryName"
+
+        for (apkPath in apkPaths) {
+            try {
+                java.util.zip.ZipFile(apkPath).use { zip ->
+                    val entry = zip.getEntry(zipEntryPath)
+                    if (entry != null) {
+                        destFile.parentFile?.mkdirs()
+                        destFile.delete()
+                        zip.getInputStream(entry).use { inputStream ->
+                            FileOutputStream(destFile).use { outputStream ->
+                                inputStream.copyTo(outputStream)
+                            }
+                        }
+                        destFile.setReadable(true, true)
+                        destFile.setExecutable(true, true)
+                        return true
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore and try the next APK
+            }
+        }
+        return false
+    }
+
     private fun copyNativeExecutable(nativeLibraryDir: String, libraryName: String, destFile: File) {
         val sourceFile = File(nativeLibraryDir, libraryName)
         if (!sourceFile.exists()) {
-            throw Exception("Runtime binary missing: ${sourceFile.absolutePath}")
+            if (!extractLibraryFromApk(libraryName, destFile)) {
+                throw Exception("Runtime binary missing: ${sourceFile.absolutePath} and not found in APKs")
+            }
+            return
         }
 
         val shouldCopy = !destFile.exists() || destFile.length() != sourceFile.length()

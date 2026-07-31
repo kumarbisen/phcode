@@ -14,11 +14,15 @@ const EXPANDED_WIDTH = 220;
 
 export const Sidebar = () => {
   const { theme } = useThemeStore();
-  const { isSidebarExpanded, activeSidebarTab, setActiveSidebarTab, toggleSidebar } = useUIStore();
+  const { isSidebarExpanded, isSidebarVisible, activeSidebarTab, setActiveSidebarTab, toggleSidebar } = useUIStore();
 
   const animatedStyle = useAnimatedStyle(() => {
+    let targetWidth = 0;
+    if (isSidebarVisible) {
+      targetWidth = isSidebarExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
+    }
     return {
-      width: withTiming(isSidebarExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH, { duration: 250 }),
+      width: withTiming(targetWidth, { duration: 250 }),
     };
   });
 

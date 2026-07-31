@@ -14,10 +14,10 @@ export const AIPanel = () => {
   } = useAIStore();
   const { openFiles, activeFilePath } = useFileStore();
   
-  const [modelChoice, setModelChoice] = useState<'0.5B' | '1.5B'>('1.5B');
+  const [modelChoice, setModelChoice] = useState<'0.5B' | '1.5B'>('0.5B');
   const [includeContext, setIncludeContext] = useState(true);
   
-  const flashListRef = useRef<FlashListRef<Message>>(null);
+  const flashListRef = useRef<any>(null);
 
   useEffect(() => {
     if (modelStatus === 'ready' && !useAIStore.getState().llamaContext) {
@@ -99,13 +99,6 @@ export const AIPanel = () => {
             <View style={[styles.radioDot, { backgroundColor: modelChoice === '0.5B' ? theme.colors.primary : 'transparent' }]} />
             <Text style={{ color: theme.colors.textPrimary, fontSize: 13, marginLeft: 8 }}>0.5B Lite (~350 MB, fast)</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.radioItem, { borderColor: modelChoice === '1.5B' ? theme.colors.primary : theme.colors.border, marginTop: 8 }]}
-            onPress={() => setModelChoice('1.5B')}
-          >
-            <View style={[styles.radioDot, { backgroundColor: modelChoice === '1.5B' ? theme.colors.primary : 'transparent' }]} />
-            <Text style={{ color: theme.colors.textPrimary, fontSize: 13, marginLeft: 8 }}>1.5B Pro (~900 MB, smart)</Text>
-          </TouchableOpacity>
         </View>
 
         <TouchableOpacity 
@@ -157,7 +150,7 @@ export const AIPanel = () => {
       
       <View style={styles.chatArea}>
         {messages.length === 0 ? (
-           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, paddingHorizontal: 36 }}>
               <Bot color={theme.colors.textSecondary} size={32} style={{ opacity: 0.5, marginBottom: 12 }} />
               <Text style={{ color: theme.colors.textSecondary, textAlign: 'center' }}>
                 Hi! I'm your local AI. Ask me to explain code, find bugs, or write new features.
@@ -168,7 +161,7 @@ export const AIPanel = () => {
             ref={flashListRef}
             data={messages}
             renderItem={renderMessage}
-            contentContainerStyle={{ paddingBottom: 20 }}
+            contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 16 }}
             keyboardShouldPersistTaps="handled"
           />
         )}
@@ -215,7 +208,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   headerContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
   header: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
-  chatArea: { flex: 1, marginBottom: 8 },
+  chatArea: { flex: 1, marginBottom: 8, marginHorizontal: -16 },
   messageRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16, width: '100%' },
   messageRowUser: { justifyContent: 'flex-end', paddingLeft: 32 },
   messageRowBot: { justifyContent: 'flex-start', paddingRight: 32 },

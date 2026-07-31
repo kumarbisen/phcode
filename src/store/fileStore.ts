@@ -265,6 +265,10 @@ export const useFileStore = create<FileState>()(
       }
       // Reload directory to reflect changes
       await get().loadDirectory(get().rootPath);
+      
+      if (!isDirectory) {
+        get().openFile(fullPath);
+      }
     } catch (e) {
       console.error('Failed to create node', e);
     }

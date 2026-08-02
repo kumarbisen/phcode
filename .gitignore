@@ -37,10 +37,6 @@ local.properties
 !debug.keystore
 .kotlin/
 
-# Keep only the release APK visible to GitHub
-android/app/build/**
-!android/app/build/outputs/apk/release/app-release.apk
-
 # node.js
 #
 node_modules/

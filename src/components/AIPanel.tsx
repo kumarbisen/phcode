@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Platform } from 'react-native';
 import { Send, Bot, User, Trash2, StopCircle, Paperclip, DownloadCloud } from 'lucide-react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import { useThemeStore } from '../store/themeStore';
 import { useAIStore, Message } from '../store/aiStore';
 import { useFileStore } from '../store/fileStore';
@@ -16,6 +17,7 @@ export const AIPanel = () => {
   
   const [modelChoice, setModelChoice] = useState<'0.5B' | '1.5B'>('1.5B');
   const [includeContext, setIncludeContext] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null); // id of last msg we copied
   
   const flashListRef = useRef<FlashListRef<Message>>(null);
 
@@ -52,19 +54,37 @@ export const AIPanel = () => {
     setInputValue('');
   };
 
+  // this let user copy the code out
+  const copy = (m: Message) => {
+    Clipboard.setString(m.content);
+    setCopiedId(m.id);
+    setTimeout(() => setCopiedId(null), 1500); // revert the label after a sec
+  };
+
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.role === 'user';
     return (
-      <View style={[styles.messageRow, isUser ? styles.messageRowUser : styles.messageRowBot]}>
-        {!isUser && <Bot color={theme.colors.primary} size={20} style={{ marginTop: 2, marginRight: 8 }} />}
-        <View style={[
-          styles.bubble, 
-          { backgroundColor: isUser ? theme.colors.primary : theme.colors.border }
+      <View style={[
+          styles.messageRow, isUser ? styles.messageRowUser : styles.messageRowBot
         ]}>
-          <Text style={{ color: isUser ? theme.colors.background : theme.colors.textPrimary, fontSize: 13 }}>
-            {item.content}
-            {item.content === '' && isGenerating && item.role === 'assistant' ? '▌' : ''}
-          </Text>
+        {!isUser && <Bot color={theme.colors.primary} size={20} style={{ marginTop: 2, marginRight: 8 }} />}
+        <View style={{ flexShrink: 1 }}>
+          <View style={[
+            styles.bubble,
+            { backgroundColor: isUser ? theme.colors.primary : theme.colors.border }
+          ]}>
+            <Text style={{ color: isUser ? theme.colors.background : theme.colors.textPrimary, fontSize: 13 }}>
+              {item.content}
+              {item.content === '' && isGenerating && item.role === 'assistant' ? '▌' : ''}
+            </Text>
+          </View>
+          {!isUser && (
+            <TouchableOpacity onPress={() => copy(item)} style={{ marginTop: 4, alignSelf: 'flex-start' }}>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 10 }}>
+                {copiedId === item.id ? 'copied' : 'copy'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
         {isUser && <User color={theme.colors.textSecondary} size={20} style={{ marginTop: 2, marginLeft: 8 }} />}
       </View>
@@ -217,8 +237,8 @@ const styles = StyleSheet.create({
   header: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
   chatArea: { flex: 1, marginBottom: 8 },
   messageRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16, width: '100%' },
-  messageRowUser: { justifyContent: 'flex-end', paddingLeft: 32 },
-  messageRowBot: { justifyContent: 'flex-start', paddingRight: 32 },
+  messageRowUser: { justifyContent: 'flex-end', paddingLeft: 8 },
+  messageRowBot: { justifyContent: 'flex-start', paddingRight: 8 },
   bubble: { padding: 10, borderRadius: 8 },
   inputContainer: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 8, padding: 4 },
   input: { flex: 1, minHeight: 40, maxHeight: 100, paddingHorizontal: 8, fontSize: 13 },

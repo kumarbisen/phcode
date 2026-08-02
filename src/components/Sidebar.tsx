@@ -11,14 +11,16 @@ import { AIPanel } from './AIPanel';
 
 const COLLAPSED_WIDTH = 60;
 const EXPANDED_WIDTH = 220;
+const AI_EXPANDED_WIDTH = 360;
 
 export const Sidebar = () => {
   const { theme } = useThemeStore();
   const { isSidebarExpanded, activeSidebarTab, setActiveSidebarTab, toggleSidebar } = useUIStore();
 
   const animatedStyle = useAnimatedStyle(() => {
+    const w = isSidebarExpanded ? (activeSidebarTab === 'ai' ? AI_EXPANDED_WIDTH : EXPANDED_WIDTH) : COLLAPSED_WIDTH;
     return {
-      width: withTiming(isSidebarExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH, { duration: 250 }),
+      width: withTiming(w, { duration: 250 }),
     };
   });
 

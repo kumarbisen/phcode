@@ -26,7 +26,7 @@ DerivedData
 
 # Android/IntelliJ
 #
-build/
+
 .idea
 .gradle
 local.properties
@@ -36,6 +36,14 @@ local.properties
 *.keystore
 !debug.keystore
 .kotlin/
+
+# Keep only the release APK visible to GitHub
+android/app/build/**
+!android/app/build/
+!android/app/build/outputs/
+!android/app/build/outputs/apk/
+!android/app/build/outputs/apk/release/
+!android/app/build/outputs/apk/release/app-release.apk
 
 # node.js
 #

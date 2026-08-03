@@ -217,7 +217,7 @@ const buildRunCommand = (filePath: string, language: string) => {
 export const TopBar = () => {
   const { theme } = useThemeStore();
   const { activeFilePath, openFiles, saveFile } = useFileStore();
-  const { isBottomPanelExpanded, toggleBottomPanel, setActiveBottomPanelTab, togglePreview, isSidebarExpanded, toggleSidebar, setActiveSidebarTab, setPreviewUrl } = useUIStore();
+  const { isBottomPanelExpanded, toggleBottomPanel, setActiveBottomPanelTab, togglePreview, isSidebarExpanded, toggleSidebar, setActiveSidebarTab, setPreviewUrl, toggleSidebarVisible } = useUIStore();
   const { currentBranch, isGitRepo } = useGitStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -296,6 +296,9 @@ export const TopBar = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.topBarBackground, borderBottomColor: theme.colors.border }]}>
       <View style={styles.leftSection}>
+        <TouchableOpacity style={styles.iconButton} onPress={toggleSidebarVisible}>
+          <Menu color={theme.colors.textPrimary} size={20} />
+        </TouchableOpacity>
 
         <Text style={[styles.projectName, { color: theme.colors.textPrimary }]}>
           PhCode

@@ -9,14 +9,24 @@ import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads'
 
 export const WelcomeScreen = () => {
   const { theme } = useThemeStore();
-  const { recentWorkspaces, loadDirectory } = useFileStore();
+  const { recentWorkspaces, loadDirectory, rootPath } = useFileStore();
   const { setInputDialog, openFolderPicker, setActiveSidebarTab } = useUIStore();
 
-  const handleNewFile = () => {
+  const handleNewFile = async () => {
+    let targetPath = rootPath || (RNFS.ExternalStorageDirectoryPath + '/PhCode');
+    try {
+      const exists = await RNFS.exists(targetPath);
+      if (!exists) {
+        await RNFS.mkdir(targetPath);
+      }
+    } catch (e) {
+      targetPath = RNFS.CachesDirectoryPath;
+    }
+
     setInputDialog({
       visible: true,
       type: 'createFile',
-      path: RNFS.ExternalStorageDirectoryPath + '/PhCode',
+      path: targetPath,
       value: ''
     });
   };

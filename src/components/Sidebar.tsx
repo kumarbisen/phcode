@@ -15,12 +15,15 @@ const AI_EXPANDED_WIDTH = 360;
 
 export const Sidebar = () => {
   const { theme } = useThemeStore();
-  const { isSidebarExpanded, activeSidebarTab, setActiveSidebarTab, toggleSidebar } = useUIStore();
+  const { isSidebarExpanded, isSidebarVisible, activeSidebarTab, setActiveSidebarTab, toggleSidebar } = useUIStore();
 
   const animatedStyle = useAnimatedStyle(() => {
-    const w = isSidebarExpanded ? (activeSidebarTab === 'ai' ? AI_EXPANDED_WIDTH : EXPANDED_WIDTH) : COLLAPSED_WIDTH;
+    let targetWidth = 0;
+    if (isSidebarVisible) {
+      targetWidth = isSidebarExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
+    }
     return {
-      width: withTiming(w, { duration: 250 }),
+      width: withTiming(targetWidth, { duration: 250 }),
     };
   });
 

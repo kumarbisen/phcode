@@ -11,6 +11,7 @@ import { AIPanel } from './AIPanel';
 
 const COLLAPSED_WIDTH = 60;
 const EXPANDED_WIDTH = 220;
+const AI_EXPANDED_WIDTH = 360;
 
 export const Sidebar = () => {
   const { theme } = useThemeStore();
